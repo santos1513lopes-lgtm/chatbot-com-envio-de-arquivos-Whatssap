@@ -1,0 +1,10 @@
+# Pastas pesadas do Node
+node_modules/
+
+# Autenticações e Sessões do WhatsApp Web JS (MUITO IMPORTANTE)
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Arquivos de ambiente e logs
+.env
+npm-debug.log*

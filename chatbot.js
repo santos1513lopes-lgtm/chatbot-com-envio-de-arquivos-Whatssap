@@ -3,7 +3,7 @@
 // =====================================
 const qrcode = require("qrcode-terminal");
 const { Client, MessageMedia, LocalAuth } = require("whatsapp-web.js");
-const path = require("path"); // Importação nativa do Node para lidar com caminhos de arquivos
+const path = require("path");
 
 // =====================================
 // CONFIGURAÇÃO DO CLIENTE
@@ -26,8 +26,12 @@ const client = new Client({
 // QR CODE
 // =====================================
 client.on("qr", (qr) => {
-  console.log("📲 Escaneie o QR Code abaixo:");
+  console.log("📲 Escaneie o QR Code abaixo no terminal:");
   qrcode.generate(qr, { small: true });
+  
+  // O Pulo do Gato: Gerando um link com a imagem do QR Code!
+  console.log("⚠️ Se o QR Code acima estiver distorcido, CLIQUE NO LINK ABAIXO para ver a imagem nítida:");
+  console.log(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`);
 });
 
 // =====================================
@@ -113,7 +117,6 @@ client.on("message", async (msg) => {
     else if (texto === "1") {
       await typing();
       
-      // Ajuste o nome do arquivo abaixo para o nome real do seu PDF
       const filePath = path.join(__dirname, 'escola2026.pdf'); 
       
       try {

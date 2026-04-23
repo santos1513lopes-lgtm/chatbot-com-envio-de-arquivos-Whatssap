@@ -107,7 +107,7 @@ client.on("message", async (msg) => {
           `📇 Captura automática de contatos\n` +
           `💻 Aprenda como deixar o robô funcionando 24 hrs, com o PC desligado\n` +
           `✅ E 3 Bônus exclusivos\n\n` +
-          `🔥 Adquira a versão PRO agora: https://pay.kiwify.com.br/FkTOhRZ?src=pro`
+          `🔥 Adquira a versão 
       );
     }
 

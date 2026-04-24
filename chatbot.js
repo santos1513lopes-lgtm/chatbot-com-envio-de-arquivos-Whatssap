@@ -1,134 +1,55 @@
-// =====================================
-// IMPORTAÇÕES
-// =====================================
-const qrcode = require("qrcode-terminal");
-const { Client, MessageMedia, LocalAuth } = require("whatsapp-web.js");
-const path = require("path");
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
+const qrcode = require('qrcode-terminal');
+const fs = require('fs');
 
-// =====================================
-// CONFIGURAÇÃO DO CLIENTE
-// =====================================
 const client = new Client({
-  authStrategy: new LocalAuth(),
-  puppeteer: {
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--single-process",
-    ],
-  },
+    authStrategy: new LocalAuth(),
+    puppeteer: {
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
 });
 
-// =====================================
-// QR CODE
-// =====================================
-client.on("qr", (qr) => {
-  console.log("📲 Escaneie o QR Code abaixo no terminal:");
-  qrcode.generate(qr, { small: true });
-  
-  // O Pulo do Gato: Gerando um link com a imagem do QR Code!
-  console.log("⚠️ Se o QR Code acima estiver distorcido, CLIQUE NO LINK ABAIXO para ver a imagem nítida:");
-  console.log(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`);
+client.on('qr', (qr) => {
+    qrcode.generate(qr, { small: true });
+    console.log('Link para o QR Code: https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(qr));
 });
 
-// =====================================
-// WHATSAPP CONECTADO
-// =====================================
-client.on("ready", () => {
-  console.log("✅ Tudo certo! WhatsApp conectado.");
+client.on('ready', () => {
+    console.log('✅ Tudo certo! WhatsApp conectado.');
 });
 
-// =====================================
-// DESCONEXÃO
-// =====================================
-client.on("disconnected", (reason) => {
-  console.log("⚠️ Desconectado:", reason);
-});
-
-// =====================================
-// INICIALIZA
-// =====================================
-client.initialize();
-
-// =====================================
-// FUNÇÃO DE DELAY
-// =====================================
-const delay = (ms) => new Promise((res) => setTimeout(res, ms));
-
-// =====================================
-// FUNIL DE MENSAGENS (SOMENTE PRIVADO)
-// =====================================
-client.on("message", async (msg) => {
-  try {
-    // ❌ IGNORA QUALQUER COISA QUE NÃO SEJA CONVERSA PRIVADA
-    if (!msg.from || msg.from.endsWith("@g.us")) return;
-
+client.on('message', async (msg) => {
     const chat = await msg.getChat();
-    if (chat.isGroup) return; // blindagem extra
+    const body = msg.body.toLowerCase().trim();
 
-    const texto = msg.body ? msg.body.trim().toLowerCase() : "";
+    // 1. Saudação Inicial
+    if (body === 'oi' || body === 'ola' || body === 'menu') {
+        await client.sendMessage(msg.from, 'Olá! Eu sou o assistente de materiais. 📚\n\nPor favor, digite seu *NOME COMPLETO* (exatamente como na matrícula) para eu liberar seu material.');
+    } 
+    
+    // 2. Verificação de Nome (Se não for saudação, o bot assume que é um nome)
+    else {
+        // Carrega a lista de alunos do arquivo JSON
+        const listaAlunos = JSON.parse(fs.readFileSync('./alunos.json', 'utf8'));
+        
+        // Procura o aluno (ignorando maiúsculas/minúsculas)
+        const alunoEncontrado = listaAlunos.find(aluno => aluno.nome.toLowerCase() === body);
 
-    // Função de digitação
-    const typing = async () => {
-      await delay(2000);
-      await chat.sendStateTyping();
-      await delay(2000);
-    };
-
-    // =====================================
-    // MENSAGEM INICIAL (MENU)
-    // =====================================
-    if (/^(menu|oi|olá|ola|bom dia|boa tarde|boa noite)$/i.test(texto)) {
-      await typing();
-
-      const hora = new Date().getHours();
-      let saudacao = "Olá";
-
-      if (hora >= 5 && hora < 12) saudacao = "Bom dia";
-      else if (hora >= 12 && hora < 18) saudacao = "Boa tarde";
-      else saudacao = "Boa noite";
-
-      await client.sendMessage(
-        msg.from,
-        `${saudacao}! 👋\n\n` +
-          `Essa mensagem foi enviada automaticamente pelo robô 🤖\n\n` +
-          `Na versão PRO você vai além: desbloqueie tudo!.\n\n` +
-          `*Digite 1 para baixar o Arquivo da Escola 2026*\n\n` +
-          `✍️ Envio de textos\n` +
-          `🎙️ Áudios\n` +
-          `🖼️ Imagens\n` +
-          `🎥 Vídeos\n` +
-          `📂 Arquivos da Escola 2026\n\n` +
-          `💡 Simulação de "digitando..." e "gravando áudio"\n` +
-          `🚀 Envio de mensagens em massa\n` +
-          `📇 Captura automática de contatos\n` +
-          `💻 Aprenda como deixar o robô funcionando 24 hrs, com o PC desligado\n` +
-          `✅ E 3 Bônus exclusivos\n\n` +
-          `🔥 Adquira a versão PRO!` // <-- CORREÇÃO FEITA AQUI (Crase e parênteses fechados)
-      );
+        if (alunoEncontrado) {
+            await client.sendMessage(msg.from, `Olá ${alunoEncontrado.nome}! Localizei seu cadastro. Enviando seu material agora... ⏳`);
+            
+            try {
+                const media = MessageMedia.fromFilePath(`./${alunoEncontrado.material}`);
+                await client.sendMessage(msg.from, media);
+                await client.sendMessage(msg.from, 'Prontinho! Bons estudos! 🚀');
+            } catch (error) {
+                console.error('Erro ao enviar arquivo:', error);
+                await client.sendMessage(msg.from, 'Ops! Tive um problema ao carregar seu arquivo. Por favor, contate o suporte.');
+            }
+        } else if (body.length > 3) { // Evita responder a qualquer mensagem curta demais
+            await client.sendMessage(msg.from, 'Desculpe, não encontrei seu nome na lista de alunos matriculados. Verifique se digitou corretamente ou fale com o professor.');
+        }
     }
-
-    // =====================================
-    // OPÇÃO 1: ENVIO DE ARQUIVO
-    // =====================================
-    else if (texto === "1") {
-      await typing();
-      
-      const filePath = path.join(__dirname, 'escola2026.pdf'); 
-      
-      try {
-        const media = MessageMedia.fromFilePath(filePath);
-        await client.sendMessage(msg.from, media, { caption: "📂 Aqui está o arquivo que você solicitou!" });
-      } catch (err) {
-        console.error("Erro ao ler o arquivo:", err);
-        await client.sendMessage(msg.from, "⚠️ Desculpe, não consegui encontrar o arquivo no momento.");
-      }
-    }
-
-  } catch (error) {
-    console.error("❌ Erro no processamento da mensagem:", error);
-  }
 });
+
+client.initialize();

@@ -37,18 +37,16 @@ client.on('message', async (msg) => {
 
         if (alunoEncontrado) {
             await client.sendMessage(msg.from, `Olá ${alunoEncontrado.nome}! Localizei seu cadastro. Enviando seu material agora... ⏳`);
-            // Procure esta parte no seu código:
-const media = MessageMedia.fromFilePath(`./${alunoEncontrado.material}`);
-
-// Adicione esta linha logo abaixo:
-media.filename = alunoEncontrado.material; 
-
-// A linha de envio continua a mesma:
-await client.sendMessage(msg.from, media, { sendMediaAsDocument: true });
+            
             try {
+                // Prepara o arquivo e força o nome original (Remove o erro "Sem título")
                 const media = MessageMedia.fromFilePath(`./${alunoEncontrado.material}`);
-               await client.sendMessage(msg.from, media, { sendMediaAsDocument: true });
+                media.filename = alunoEncontrado.material; 
+
+                // Envia o arquivo como documento
+                await client.sendMessage(msg.from, media, { sendMediaAsDocument: true });
                 await client.sendMessage(msg.from, 'Prontinho! Bons estudos! 🚀');
+                
             } catch (error) {
                 console.error('Erro ao enviar arquivo:', error);
                 await client.sendMessage(msg.from, 'Ops! Tive um problema ao carregar seu arquivo. Por favor, contate o suporte.');

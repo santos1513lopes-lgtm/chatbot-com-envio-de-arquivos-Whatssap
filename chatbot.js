@@ -40,7 +40,7 @@ client.on('message', async (msg) => {
             
             try {
                 const media = MessageMedia.fromFilePath(`./${alunoEncontrado.material}`);
-                await client.sendMessage(msg.from, media);
+               await client.sendMessage(msg.from, media, { sendMediaAsDocument: true });
                 await client.sendMessage(msg.from, 'Prontinho! Bons estudos! 🚀');
             } catch (error) {
                 console.error('Erro ao enviar arquivo:', error);

@@ -37,7 +37,14 @@ client.on('message', async (msg) => {
 
         if (alunoEncontrado) {
             await client.sendMessage(msg.from, `Olá ${alunoEncontrado.nome}! Localizei seu cadastro. Enviando seu material agora... ⏳`);
-            
+            // Procure esta parte no seu código:
+const media = MessageMedia.fromFilePath(`./${alunoEncontrado.material}`);
+
+// Adicione esta linha logo abaixo:
+media.filename = alunoEncontrado.material; 
+
+// A linha de envio continua a mesma:
+await client.sendMessage(msg.from, media, { sendMediaAsDocument: true });
             try {
                 const media = MessageMedia.fromFilePath(`./${alunoEncontrado.material}`);
                await client.sendMessage(msg.from, media, { sendMediaAsDocument: true });

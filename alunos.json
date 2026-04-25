@@ -1,13 +1,13 @@
 [
-  { "nome": "Ana Cristina Lopes", "material": "pt14.jwpub" },
-  { "nome": "Guiomar Martins", "material": "pt14.jwpub" },
-  { "nome": "Ivete Miranda", "material": "pt14.jwpub" },
-  { "nome": "João Luiz Nascimento", "material": "pt14.jwpub" },
+  { "nome": "Ana Cristina Lopes", "material": ["pt14_T.jwpub", "pt14_T.pdf"] },
+  { "nome": "Guiomar Martins", "material": ["pt14_T.jwpub", "pt14_T.pdf"] },
+  { "nome": "Ivete Miranda", "material": ["pt14_T.jwpub", "pt14_T.pdf"] },
+  { "nome": "João Luiz Nascimento", "material": ["pt14_T.jwpub", "pt14_T.pdf"] },
   { "nome": "Josué Lopes", "material": ["pt14_T.jwpub", "pt14_T.pdf"]  },
-  { "nome": "Maria Aparecida Nere", "material": "pt14.jwpub" },
-  { "nome": "Maria Euza Nascimento", "material": "pt14.jwpub" },
-  { "nome": "Marilene Palmeira", "material": "pt14.jwpub" },
-  { "nome": "Marivalda Costa", "material": "pt14.jwpub" },
+  { "nome": "Maria Aparecida Nere", "material": ["pt14_T.jwpub", "pt14_T.pdf"] },
+  { "nome": "Maria Euza Nascimento", "material": ["pt14_T.jwpub", "pt14_T.pdf"] },
+  { "nome": "Marilene Palmeira", "material": ["pt14_T.jwpub", "pt14_T.pdf"] },
+  { "nome": "Marivalda Costa", "material": ["pt14_T.jwpub", "pt14_T.pdf"] },
   { "nome": "Daniel Santos de Cerqueira", "material": "Cidade Jardim App_NW.pdf" },
-  { "nome": "Rosimeiry Lima", "material": "pt14.jwpub" }
+  { "nome": "Rosimeiry Lima", "material": ["pt14_T.jwpub", "pt14_T.pdf"] }
 ]

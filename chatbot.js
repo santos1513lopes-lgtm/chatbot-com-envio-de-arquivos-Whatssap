@@ -40,30 +40,22 @@ client.on('message', async (msg) => {
                 await delay(1500); 
                 await client.sendMessage(msg.from, `Olá ${alunoEncontrado.nome}! Localizei seu cadastro. Preparando seu(s) material(is)... ⏳`);
                 
-                // MÁGICA: Transforma o material em uma lista, mesmo se for só um arquivo
+                // Transforma o material em lista (mesmo se for só 1 arquivo)
                 const listaMateriais = Array.isArray(alunoEncontrado.material) 
                     ? alunoEncontrado.material 
                     : [alunoEncontrado.material];
 
-                // LAÇO DE REPETIÇÃO: Envia cada arquivo da lista um por um
+                // LAÇO DE REPETIÇÃO: Agora ele envia TODOS os arquivos fisicamente da pasta
                 for (const arquivo of listaMateriais) {
+                    await chat.sendStateTyping();
+                    await delay(2500); // Tempo fingindo que está carregando o arquivo
                     
-                    if (arquivo.endsWith('.jwpub')) {
-                        await chat.sendStateTyping();
-                        await delay(2000); 
-                        const linkDownload = 'https://drive.google.com/uc?export=download&id=12wYrAn2UnQF5IOWv8u81G1szMaaexr4u';
-                        await client.sendMessage(msg.from, `Para baixar seu material JWpub, clique no link abaixo:\n\n${linkDownload}`);
-                        
-                    } else {
-                        await chat.sendStateTyping();
-                        await delay(3000); 
-                        const media = MessageMedia.fromFilePath(`./${arquivo}`);
-                        media.filename = arquivo; 
-                        await client.sendMessage(msg.from, media, { sendMediaAsDocument: true });
-                    }
+                    const media = MessageMedia.fromFilePath(`./${arquivo}`);
+                    media.filename = arquivo; 
+                    await client.sendMessage(msg.from, media, { sendMediaAsDocument: true });
                 }
                 
-                // Mensagem final disparada apenas quando todos os arquivos terminam de ser enviados
+                // Mensagem final
                 await chat.sendStateTyping();
                 await delay(1000);
                 await client.sendMessage(msg.from, 'Prontinho! Todos os arquivos foram enviados. Bons estudos! 🚀');
@@ -76,7 +68,7 @@ client.on('message', async (msg) => {
         } catch (error) {
             console.error('Erro no processamento:', error);
             if (error.code === 'ENOENT') {
-                await client.sendMessage(msg.from, 'Localizei seu cadastro, mas algum arquivo físico ainda não está no servidor. Por favor, avise o suporte.');
+                await client.sendMessage(msg.from, 'Localizei seu cadastro, mas o arquivo físico ainda não está no servidor. Por favor, avise o suporte.');
             }
         }
     }

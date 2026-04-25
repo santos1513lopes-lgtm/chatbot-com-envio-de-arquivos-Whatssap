@@ -18,41 +18,62 @@ client.on('ready', () => {
     console.log('✅ Tudo certo! WhatsApp conectado.');
 });
 
+// Função para criar uma pausa (tempo em milissegundos. Ex: 2000 = 2 segundos)
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
 client.on('message', async (msg) => {
     const chat = await msg.getChat();
     const body = msg.body.toLowerCase().trim();
 
     // 1. Saudação Inicial
     if (body === 'oi' || body === 'ola' || body === 'menu') {
+        await chat.sendStateTyping(); // Simula que está digitando
+        await delay(2000); // Aguarda 2 segundos
         await client.sendMessage(msg.from, 'Olá! Eu sou o assistente de materiais. 📚\n\nPor favor, digite seu *NOME COMPLETO* (exatamente como na matrícula) para eu liberar seu material.');
     } 
     
-    // 2. Verificação de Nome (Se não for saudação, o bot assume que é um nome)
+    // 2. Verificação de Nome
     else {
-        // Carrega a lista de alunos do arquivo JSON
-        const listaAlunos = JSON.parse(fs.readFileSync('./alunos.json', 'utf8'));
-        
-        // Procura o aluno (ignorando maiúsculas/minúsculas)
-        const alunoEncontrado = listaAlunos.find(aluno => aluno.nome.toLowerCase() === body);
+        try {
+            const listaAlunos = JSON.parse(fs.readFileSync('./alunos.json', 'utf8'));
+            const alunoEncontrado = listaAlunos.find(aluno => aluno.nome.toLowerCase() === body);
 
-        if (alunoEncontrado) {
-            await client.sendMessage(msg.from, `Olá ${alunoEncontrado.nome}! Localizei seu cadastro. Enviando seu material agora... ⏳`);
-            
-            try {
-                // Prepara o arquivo e força o nome original (Remove o erro "Sem título")
-                const media = MessageMedia.fromFilePath(`./${alunoEncontrado.material}`);
-                media.filename = alunoEncontrado.material; 
-
-                // Envia o arquivo como documento
-                await client.sendMessage(msg.from, media, { sendMediaAsDocument: true });
-                await client.sendMessage(msg.from, 'Prontinho! Bons estudos! 🚀');
+            if (alunoEncontrado) {
+                await chat.sendStateTyping(); 
+                await delay(1500); 
+                await client.sendMessage(msg.from, `Olá ${alunoEncontrado.nome}! Localizei seu cadastro. Preparando seu material... ⏳`);
                 
-            } catch (error) {
-                console.error('Erro ao enviar arquivo:', error);
-                await client.sendMessage(msg.from, 'Ops! Tive um problema ao carregar seu arquivo. Por favor, contate o suporte.');
+                // LÓGICA DE DECISÃO: Link ou Arquivo Direto
+                if (alunoEncontrado.material.endsWith('.jwpub')) {
+                    
+                    await chat.sendStateTyping();
+                    await delay(2000); // Mais 2 segundos fingindo que está buscando o link
+                    
+                    const linkDownload = 'https://drive.google.com/uc?export=download&id=12wYrAn2UnQF5IOWv8u81G1szMaaexr4u';
+                    await client.sendMessage(msg.from, `Para baixar seu material JWpub, clique no link abaixo:\n\n${linkDownload}`);
+                    await client.sendMessage(msg.from, 'Basta clicar para iniciar o download. Bons estudos! 🚀');
+                    
+                } else {
+                    
+                    await chat.sendStateTyping();
+                    await delay(3000); // Tempo maior simulando o "carregamento" do arquivo PDF
+                    
+                    const media = MessageMedia.fromFilePath(`./${alunoEncontrado.material}`);
+                    media.filename = alunoEncontrado.material; 
+                    await client.sendMessage(msg.from, media, { sendMediaAsDocument: true });
+                    await client.sendMessage(msg.from, 'Prontinho! Seu arquivo foi enviado. Bons estudos! 🚀');
+                }
+
+            } else if (body.length > 3) {
+                await chat.sendStateTyping();
+                await delay(2000);
+                await client.sendMessage(msg.from, 'Desculpe, não encontrei seu nome na lista de alunos matriculados. Verifique a grafia ou fale com o professor.');
             }
-        } else if (body.length > 3) { // Evita responder a qualquer mensagem curta demais
-            await client.sendMessage(msg.from, 'Desculpe, não encontrei seu nome na lista de alunos matriculados. Verifique se digitou corretamente ou fale com o professor.');
+        } catch (error) {
+            console.error('Erro no processamento:', error);
+            if (error.code === 'ENOENT') {
+                await client.sendMessage(msg.from, 'Localizei seu cadastro, mas o arquivo físico ainda não está no servidor. Por favor, avise o suporte.');
+            }
         }
     }
 });

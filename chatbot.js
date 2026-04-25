@@ -1,11 +1,16 @@
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
-const fs = require('fs');
+const axios = require('axios'); // Biblioteca para ler o Google Sheets
 
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu'
+        ]
     }
 });
 
@@ -20,19 +25,45 @@ client.on('ready', () => {
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
+// ESTE É O SEU LINK NOVO QUE EU JÁ ATUALIZEI:
+const urlPlanilha = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT0jpFV50k9Ju50f_0jiWPLNAuKkDid4nwyrLl6AyYHTKCMKV95A04fL_-aNl5uHrjobXWeikTu1B0B/pub?output=csv';
+
 client.on('message', async (msg) => {
     const chat = await msg.getChat();
     const body = msg.body.toLowerCase().trim();
 
+    // 1. Saudação e Menu
     if (body === 'oi' || body === 'ola' || body === 'menu' || body === 'bom dia' || body === 'boa tarde' || body === 'boa noite' || body === 'dia' || body === 'tarde' || body === 'noite') {
         await chat.sendStateTyping();
         await delay(2000);
         await client.sendMessage(msg.from, 'Olá! Eu sou o assistente de materiais. 📚\n\nPor favor, digite seu *NOME COMPLETO* (exatamente como na matrícula) para eu liberar seu material.');
     } 
     
+    // 2. Verificação na Planilha do Google Sheets
     else {
         try {
-            const listaAlunos = JSON.parse(fs.readFileSync('./alunos.json', 'utf8'));
+            // O robô baixa os dados da planilha
+            const response = await axios.get(urlPlanilha);
+            const dadosCSV = response.data;
+            
+            // Converte o texto da planilha em uma lista
+            const linhas = dadosCSV.split('\n').slice(1); 
+            
+            let listaAlunos = [];
+            for (let linha of linhas) {
+                if (linha.trim() === '') continue;
+                
+                const colunas = linha.split(','); 
+                if (colunas.length >= 2) {
+                    listaAlunos.push({
+                        nome: colunas[0].trim(),
+                        // Aqui ele entende o ponto-e-vírgula (;) para mandar vários arquivos
+                        material: colunas[1].trim().split(';') 
+                    });
+                }
+            }
+
+            // Procura o nome do aluno
             const alunoEncontrado = listaAlunos.find(aluno => aluno.nome.toLowerCase() === body);
 
             if (alunoEncontrado) {
@@ -40,44 +71,36 @@ client.on('message', async (msg) => {
                 await delay(1500); 
                 await client.sendMessage(msg.from, `Olá ${alunoEncontrado.nome}! Localizei seu cadastro. Preparando seu(s) material(is)... ⏳`);
                 
-                // MÁGICA: Transforma o material em uma lista, mesmo se for só um arquivo
-                const listaMateriais = Array.isArray(alunoEncontrado.material) 
-                    ? alunoEncontrado.material 
-                    : [alunoEncontrado.material];
+                // Loop para enviar cada arquivo da lista
+                for (const arquivo of alunoEncontrado.material) {
+                    const nomeArquivo = arquivo.trim(); 
+                    if (nomeArquivo === '') continue;
 
-                // LAÇO DE REPETIÇÃO: Envia cada arquivo da lista um por um
-                for (const arquivo of listaMateriais) {
+                    await chat.sendStateTyping();
+                    await delay(2500); 
                     
-                    if (arquivo.endsWith('.jwpub')) {
-                        await chat.sendStateTyping();
-                        await delay(2000); 
-                        const linkDownload = 'https://drive.google.com/uc?export=download&id=12wYrAn2UnQF5IOWv8u81G1szMaaexr4u';
-                        await client.sendMessage(msg.from, `Para baixar seu material JWpub, clique no link abaixo:\n\n${linkDownload}`);
-                        
-                    } else {
-                        await chat.sendStateTyping();
-                        await delay(3000); 
-                        const media = MessageMedia.fromFilePath(`./${arquivo}`);
-                        media.filename = arquivo; 
+                    try {
+                        const media = MessageMedia.fromFilePath(`./${nomeArquivo}`);
+                        media.filename = nomeArquivo; 
                         await client.sendMessage(msg.from, media, { sendMediaAsDocument: true });
+                    } catch (errArquivo) {
+                        console.error(`Erro: Arquivo ${nomeArquivo} não encontrado no servidor.`);
+                        await client.sendMessage(msg.from, `❌ Não encontrei o arquivo: *${nomeArquivo}* no meu sistema.`);
                     }
                 }
                 
-                // Mensagem final disparada apenas quando todos os arquivos terminam de ser enviados
                 await chat.sendStateTyping();
                 await delay(1000);
-                await client.sendMessage(msg.from, 'Prontinho! Todos os arquivos foram enviados. Bons estudos! 🚀');
+                await client.sendMessage(msg.from, 'Prontinho! Bons estudos! 🚀');
 
             } else if (body.length > 3) {
                 await chat.sendStateTyping();
                 await delay(2000);
-                await client.sendMessage(msg.from, 'Desculpe, não encontrei seu nome na lista de alunos matriculados. Verifique a grafia ou fale com o professor.');
+                await client.sendMessage(msg.from, 'Desculpe, não encontrei seu nome na lista. Verifique se digitou corretamente.');
             }
         } catch (error) {
-            console.error('Erro no processamento:', error);
-            if (error.code === 'ENOENT') {
-                await client.sendMessage(msg.from, 'Localizei seu cadastro, mas algum arquivo físico ainda não está no servidor. Por favor, avise o suporte.');
-            }
+            console.error('Erro ao ler planilha:', error);
+            await client.sendMessage(msg.from, 'Ops! Tive um problema técnico. Tente novamente em instantes.');
         }
     }
 });

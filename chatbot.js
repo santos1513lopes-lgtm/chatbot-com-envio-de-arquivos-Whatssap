@@ -26,7 +26,7 @@ client.on('message', async (msg) => {
     const body = msg.body.toLowerCase().trim();
 
     // 1. Saudação Inicial
-    if (body === 'oi' || body === 'ola' || body === 'menu' || body === 'Noite' || body === 'Tarde' || body === 'dia') {
+  if (body === 'oi' || body === 'ola' || body === 'menu' || body === 'bom dia' || body === 'boa tarde' || body === 'boa noite' || body === 'dia' || body === 'tarde' || body === 'noite') {
         await chat.sendStateTyping(); // Simula que está digitando
         await delay(2000); // Aguarda 2 segundos
         await client.sendMessage(msg.from, 'Olá! Eu sou o assistente de materiais. 📚\n\nPor favor, digite seu *NOME COMPLETO* (exatamente como na matrícula) para eu liberar seu material.');

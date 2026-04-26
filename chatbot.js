@@ -2,12 +2,13 @@ const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const axios = require('axios');
 const fs = require('fs');
-const path = require('path');
 
 // ================= CONFIG =================
 const urlPlanilha = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT0jpFV50k9Ju50f_0jiWPLNAuKkDid4nwyrLl6AyYHTKCMKV95A04fL_-aNl5uHrjobXWeikTu1B0B/pub?output=csv';
 
 const urlRegistroAcessos = 'https://script.google.com/macros/s/AKfycbwbn7x6r_2tZva7uuNyJI-YOzEKoh60TEyKBf7jyUUMJXGeJkhmKNPq6Q5I0DnVcYRAlQ/exec';
+
+const linkDownloadJwpub = 'https://drive.google.com/uc?export=download&id=12wYrAn2UnQF5IOWv8u81G1szMaaexr4u';
 
 // ================= CLIENT =================
 const client = new Client({
@@ -25,7 +26,7 @@ const client = new Client({
 // ================= FUNÇÕES =================
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
-const removerAcentos = (texto) => {
+const removerAcentos = (texto = '') => {
     return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 };
 
@@ -41,12 +42,10 @@ const registrarAcesso = async (nomeAluno, telefone, materiais) => {
 
     const log = `[${dataHora}] ${nomeAluno} | ${telefone} | ${listaMateriais}\n`;
 
-    // SALVAR LOCAL
     fs.appendFile('relatorio_acessos.txt', log, (err) => {
         if (err) console.error('Erro ao salvar local:', err);
     });
 
-    // ENVIAR PARA PLANILHA
     try {
         await axios.post(urlRegistroAcessos, {
             nomeAluno,
@@ -82,14 +81,39 @@ client.on('message', async (msg) => {
         const body = removerAcentos(bodyOriginal);
 
         // SAUDAÇÃO
-        if (['oi','ola','menu','bom dia','boa tarde','boa noite'].includes(body)) {
+        if (['oi', 'ola', 'menu', 'bom dia', 'boa tarde', 'boa noite'].includes(body)) {
             await chat.sendStateTyping();
             await delay(1500);
 
-            return client.sendMessage(msg.from,
+            return client.sendMessage(
+                msg.from,
                 'Olá! 👋\n\nDigite seu *NOME E SOBRENOME* para acessar seu material.'
             );
         }
+
+        // AGRADECIMENTOS
+        if (['obrigado', 'obrigada', 'valeu', 'gratidao', 'obg', 'ok', 'joia'].includes(body)) {
+            await chat.sendStateTyping();
+            await delay(1500);
+
+            return client.sendMessage(
+                msg.from,
+                'Por nada! Fico feliz em ajudar. 😉📚'
+            );
+        }
+
+        // SUPORTE
+        if (['ajuda', 'suporte', 'atendente', 'professor', 'problema', 'erro'].includes(body)) {
+            await chat.sendStateTyping();
+            await delay(1500);
+
+            return client.sendMessage(
+                msg.from,
+                'Entendi! 🚨 Vou repassar sua mensagem para um dos professores. Por favor, aguarde.'
+            );
+        }
+
+        if (body.length <= 3) return;
 
         // BUSCAR NA PLANILHA
         const response = await axios.get(urlPlanilha);
@@ -98,16 +122,18 @@ client.on('message', async (msg) => {
         let aluno = null;
 
         for (let linha of linhas) {
+            if (!linha.trim()) continue;
+
             const colunas = linha.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
 
-            const nome = colunas[0]?.replace(/"/g, '').trim();
-            const materiais = colunas[1]?.replace(/"/g, '').trim();
-            const msgExtra = colunas[2]?.replace(/"/g, '').trim();
+            const nome = colunas[0]?.replace(/^"|"$/g, '').trim();
+            const materiais = colunas[1]?.replace(/^"|"$/g, '').trim();
+            const msgExtra = colunas[2]?.replace(/^"|"$/g, '').trim();
 
             if (removerAcentos(nome) === body) {
                 aluno = {
                     nome,
-                    materiais: materiais.split(';').map(m => m.trim()),
+                    materiais: materiais.split(';').map(m => m.trim()).filter(Boolean),
                     msgExtra
                 };
                 break;
@@ -116,7 +142,10 @@ client.on('message', async (msg) => {
 
         // NÃO ENCONTRADO
         if (!aluno) {
-            return client.sendMessage(msg.from, 'Nome não encontrado. Verifique a digitação.');
+            return client.sendMessage(
+                msg.from,
+                'Nome não encontrado. Verifique a digitação e envie seu *nome e sobrenome* novamente.'
+            );
         }
 
         // ENVIAR MATERIAL
@@ -128,16 +157,45 @@ client.on('message', async (msg) => {
         for (const arquivo of aluno.materiais) {
             await delay(1500);
 
-            if (arquivo.startsWith('http')) {
-                await client.sendMessage(msg.from, `🔗 ${arquivo}`);
+            const arquivoLimpo = arquivo.trim();
+            const arquivoMinusculo = arquivoLimpo.toLowerCase();
+
+            // LINK NORMAL
+            if (arquivoMinusculo.startsWith('http://') || arquivoMinusculo.startsWith('https://')) {
+                await client.sendMessage(msg.from, `🔗 Segue o link para acesso:\n\n${arquivoLimpo}`);
             }
-            else if (arquivo.endsWith('.mp3') || arquivo.endsWith('.ogg')) {
-                const media = MessageMedia.fromFilePath(`./${arquivo}`);
-                await client.sendMessage(msg.from, media, { sendAudioAsVoice: true });
+
+            // JWPUB - ENVIA LINK, NÃO ENVIA O ARQUIVO
+            else if (arquivoMinusculo.endsWith('.jwpub')) {
+                await client.sendMessage(
+                    msg.from,
+                    `📘 Para baixar o arquivo *${arquivoLimpo}*, clique no link abaixo:\n\n${linkDownloadJwpub}`
+                );
             }
+
+            // ÁUDIO
+            else if (arquivoMinusculo.endsWith('.mp3') || arquivoMinusculo.endsWith('.ogg')) {
+                try {
+                    await chat.sendStateRecording();
+                    await delay(3000);
+
+                    const media = MessageMedia.fromFilePath(`./${arquivoLimpo}`);
+                    await client.sendMessage(msg.from, media, { sendAudioAsVoice: true });
+                } catch (erroAudio) {
+                    console.error(`Erro ao enviar áudio ${arquivoLimpo}:`, erroAudio.message);
+                    await client.sendMessage(msg.from, `⚠️ Não consegui enviar o áudio: ${arquivoLimpo}`);
+                }
+            }
+
+            // PDF, IMAGEM, DOCUMENTOS ETC.
             else {
-                const media = MessageMedia.fromFilePath(`./${arquivo}`);
-                await client.sendMessage(msg.from, media, { sendMediaAsDocument: true });
+                try {
+                    const media = MessageMedia.fromFilePath(`./${arquivoLimpo}`);
+                    await client.sendMessage(msg.from, media, { sendMediaAsDocument: true });
+                } catch (erroArquivo) {
+                    console.error(`Erro ao enviar arquivo ${arquivoLimpo}:`, erroArquivo.message);
+                    await client.sendMessage(msg.from, `⚠️ Não consegui enviar o arquivo: ${arquivoLimpo}`);
+                }
             }
         }
 
@@ -153,7 +211,7 @@ client.on('message', async (msg) => {
         await registrarAcesso(aluno.nome, msg.from, aluno.materiais);
 
     } catch (error) {
-        console.error(error);
+        console.error('Erro geral:', error);
         client.sendMessage(msg.from, '⚠️ Erro ao processar. Tente novamente.');
     }
 });

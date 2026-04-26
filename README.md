@@ -1,59 +1,313 @@
-# chatbot-com-envio-de-arquivos-Whatssap
-Guia Completo: Bot WhatsApp na AWS
-Este documento contém todo o passo a passo para configurar, rodar e gerenciar o seu bot de materiais no WhatsApp usando AWS e PM2.
-1. Configuração Local (Seu Computador)
-Antes de subir para a nuvem, você deve garantir que o projeto está rodando localmente.
-Instale as dependências:
-npm install whatsapp-web.js qrcode-terminal fs
-2. Estrutura do Projeto
-Mantenha seus arquivos organizados conforme a tabela abaixo:
-Arquivo
-Descrição
- 
-chatbot.js
-Arquivo principal com a lógica do robô (Saudação, Digitando, Envio de Arquivos/Links).
-alunos.json
-Banco de dados em formato JSON com a lista de nomes e materiais.
-.gitignore
-Configuração para o Git ignorar arquivos sensíveis (como a chave .pem).
+Perfeito — vou te entregar um **tutorial completo, organizado e pronto pra copiar** 👇
+(Do zero até deixar seu bot rodando 24h na VPS 🚀)
 
-3. Configuração na AWS (Servidor Nuvem)
-3.1 Acesso via SSH
-Use o comando abaixo no terminal do seu VS Code para entrar na sua máquina virtual:
-ssh -i "sua-chave.pem" ubuntu@seu-ip-da-aws.compute.amazonaws.com
-3.2 Acessando a Pasta do Projeto
-Sempre que você entrar no servidor da AWS, o primeiro passo antes de executar qualquer comando do robô é entrar na pasta onde os arquivos estão:
+---
+
+# 📘 TUTORIAL COMPLETO — CHATBOT WHATSAPP 24H NA VPS (CONTABO)
+
+---
+
+# 🧠 VISÃO GERAL
+
+Você vai:
+
+1. Conectar na VPS
+2. Instalar Node.js
+3. Instalar dependências do Chrome (Puppeteer)
+4. Baixar seu projeto do GitHub
+5. Rodar o bot
+6. Escanear o QR Code
+7. Deixar rodando 24h com PM2
+
+---
+
+# 🔐 1. ACESSAR A VPS
+
+No terminal do VS Code ou CMD:
+
+```bash
+ssh root@185.2.101.110
+```
+
+Digite sua senha.
+
+Se aparecer:
+
+```bash
+root@vmiXXXXX:~#
+```
+
+✅ Você está dentro da VPS
+
+---
+
+# 🔄 2. ATUALIZAR O SERVIDOR
+
+```bash
+apt update && apt upgrade -y
+```
+
+---
+
+# ⚙️ 3. INSTALAR NODE.JS
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+```
+
+Verificar:
+
+```bash
+node -v
+npm -v
+```
+
+---
+
+# 🧩 4. INSTALAR DEPENDÊNCIAS DO CHROME (ESSENCIAL)
+
+👉 Isso evita erros do Puppeteer (como o que você teve)
+
+```bash
+apt install -y \
+libxfixes3 libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
+libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
+libxrandr2 libgbm1 libasound2t64 libpango-1.0-0 \
+libcairo2 libxshmfence1 libgtk-3-0
+```
+
+---
+
+# 📥 5. BAIXAR SEU PROJETO
+
+```bash
+git clone https://github.com/santos1513lopes-lgtm/chatbot-com-envio-de-arquivos-whatssap.git
 cd chatbot-com-envio-de-arquivos-whatssap
-3.3 Comandos de Gerenciamento (PM2)
-O PM2 é o que mantém o seu robô rodando mesmo quando você fecha o computador.
-Comando
-O que faz
- 
-pm2 start chatbot.js --name "bot-wa"
-Inicia o robô pela primeira vez.
-pm2 logs
-Acompanha o funcionamento e exibe o QR Code.
-pm2 restart bot-wa
-Aplica as mudanças após um git pull.
-pm2 stop bot-wa
-Pausa o robô.
-pm2 list
-Lista todos os processos ativos.
+```
 
-4. Ciclo de Atualização Perfeito
-Sempre que você precisar adicionar um aluno ou mudar um texto, siga esta ordem rigorosa:
-No seu PC: Altere o código ou o JSON e salve.
-No seu PC: Envie para o GitHub:
-git add .
-git commit -m "Atualização de teste"
-git push
-Na AWS: Entre na pasta do projeto (caso não tenha feito) e puxe a novidade:
+---
+
+# 📦 6. INSTALAR DEPENDÊNCIAS DO PROJETO
+
+```bash
+npm install
+```
+
+---
+
+# ▶️ 7. RODAR O BOT (PRIMEIRA VEZ)
+
+```bash
+node chatbot.js
+```
+
+Vai aparecer o QR Code:
+
+📱 Abra o WhatsApp → Aparelhos conectados → Conectar → escaneie
+
+Se aparecer:
+
+```bash
+Robô conectado
+```
+
+✅ Funcionando
+
+---
+
+# ⚠️ ERROS COMUNS (E SOLUÇÕES)
+
+### ❌ Erro: `libXfixes.so.3`
+
+✔️ Resolver com:
+
+```bash
+apt install -y libxfixes3
+```
+
+---
+
+### ❌ Erro: `browser already running`
+
+✔️ Significa que o bot já está rodando no PM2
+
+👉 NÃO rode `node chatbot.js` de novo
+
+---
+
+# 🚀 8. COLOCAR ONLINE 24H (PM2)
+
+Instalar:
+
+```bash
+npm install -g pm2
+```
+
+Iniciar bot:
+
+```bash
+pm2 start chatbot.js --name bot-whatsapp
+```
+
+Salvar:
+
+```bash
+pm2 save
+```
+
+Auto iniciar:
+
+```bash
+pm2 startup
+```
+
+👉 Copie e execute o comando que aparecer
+
+---
+
+# 📊 9. COMANDOS IMPORTANTES DO PM2
+
+Ver status:
+
+```bash
+pm2 status
+```
+
+Ver logs:
+
+```bash
+pm2 logs bot-whatsapp
+```
+
+Reiniciar:
+
+```bash
+pm2 restart bot-whatsapp
+```
+
+Parar:
+
+```bash
+pm2 stop bot-whatsapp
+```
+
+---
+
+# 🔁 10. ATUALIZAR SEU BOT (QUANDO MUDAR O CÓDIGO)
+
+```bash
 cd chatbot-com-envio-de-arquivos-whatssap
 git pull
-Na AWS: Reinicie o processo para carregar a mudança:
-pm2 restart bot-wa
-5. Dicas de Segurança e Resolução de Erros
-Erro EBADF no PM2: Execute pm2 kill e depois pm2 start chatbot.js --name "bot-wa".
-Erro de Conexão (Timed Out): Reinicie a instância no painel da AWS e pegue o novo IP se necessário.
-Arquivo .gitignore: Certifique-se de que sua chave .pem e a pasta node_modules estão listadas lá.
+pm2 restart bot-whatsapp
+```
+
+---
+
+# 📁 11. ARQUIVOS IMPORTANTES
+
+### NÃO APAGAR:
+
+```bash
+.wwebjs_auth/
+```
+
+👉 Guarda o login do WhatsApp
+👉 Se apagar → precisa escanear QR de novo
+
+---
+
+# 🧹 12. .GITIGNORE RECOMENDADO
+
+Crie um arquivo `.gitignore`:
+
+```txt
+node_modules/
+.wwebjs_auth/
+.wwebjs_cache/
+relatorio_acessos.txt
+```
+
+---
+
+# 🧠 DICAS IMPORTANTES
+
+### 💡 1. Sempre use PM2
+
+Nunca deixe rodando com:
+
+```bash
+node chatbot.js
+```
+
+---
+
+### 💡 2. VPS reiniciou?
+
+Seu bot volta sozinho (se fez `pm2 save`)
+
+---
+
+### 💡 3. Logs são seus melhores amigos
+
+```bash
+pm2 logs bot-whatsapp
+```
+
+---
+
+### 💡 4. Arquivos do bot
+
+Seu código usa:
+
+```js
+MessageMedia.fromFilePath(`./arquivo`)
+```
+
+👉 Então os arquivos precisam estar dentro da pasta do projeto
+
+---
+
+### 💡 5. Segurança básica
+
+Depois você pode:
+
+```bash
+adduser seuusuario
+```
+
+(e parar de usar root — posso te ensinar depois)
+
+---
+
+# 🎯 RESULTADO FINAL
+
+Depois de tudo isso, você terá:
+
+✅ Bot rodando 24h
+✅ Reconectando sozinho
+✅ VPS funcionando
+✅ Controle total pelo VS Code
+
+---
+
+# 🚀 SE QUISER EVOLUIR DEPOIS
+
+Posso te ajudar a:
+
+* Colocar domínio
+* Criar painel web
+* Melhorar respostas com IA
+* Salvar dados em banco (MySQL/MongoDB)
+* Automatizar envio em massa
+
+---
+
+# 🏁 FINAL
+
+Você já fez a parte mais difícil: **colocar na VPS e rodar** 👏
+Agora é só manter e evoluir.
+
+---
+
 

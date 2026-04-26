@@ -5,12 +5,7 @@ const fs = require('fs');
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        args: [
-            '--no-sandbox', 
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu'
-        ]
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
     }
 });
 
@@ -29,14 +24,12 @@ client.on('message', async (msg) => {
     const chat = await msg.getChat();
     const body = msg.body.toLowerCase().trim();
 
-    // 1. Saudação
     if (body === 'oi' || body === 'ola' || body === 'menu' || body === 'bom dia' || body === 'boa tarde' || body === 'boa noite' || body === 'dia' || body === 'tarde' || body === 'noite') {
         await chat.sendStateTyping();
         await delay(2000);
-        await client.sendMessage(msg.from, 'Olá! Eu sou o assistente de materiais. 📚\n\nPor favor, digite seu *NOME COMPLETO* para eu liberar seu material.');
+        await client.sendMessage(msg.from, 'Olá! Eu sou o assistente de materiais. 📚\n\nPor favor, digite seu *NOME COMPLETO* (exatamente como na matrícula) para eu liberar seu material.');
     } 
     
-    // 2. Busca no arquivo alunos.json
     else {
         try {
             const listaAlunos = JSON.parse(fs.readFileSync('./alunos.json', 'utf8'));
@@ -47,23 +40,21 @@ client.on('message', async (msg) => {
                 await delay(1500); 
                 await client.sendMessage(msg.from, `Olá ${alunoEncontrado.nome}! Localizei seu cadastro. Preparando seu(s) material(is)... ⏳`);
                 
-                // Trata o material como lista (Array) para suportar vários envios
+                // MÁGICA: Transforma o material em uma lista, mesmo se for só um arquivo
                 const listaMateriais = Array.isArray(alunoEncontrado.material) 
                     ? alunoEncontrado.material 
                     : [alunoEncontrado.material];
 
+                // LAÇO DE REPETIÇÃO: Envia cada arquivo da lista um por um
                 for (const arquivo of listaMateriais) {
                     
-                    // SE FOR JWPUB: Envia o link de download
                     if (arquivo.endsWith('.jwpub')) {
                         await chat.sendStateTyping();
                         await delay(2000); 
                         const linkDownload = 'https://drive.google.com/uc?export=download&id=12wYrAn2UnQF5IOWv8u81G1szMaaexr4u';
-                        await client.sendMessage(msg.from, `Para baixar seu material (Pioneiros pt14), clique no link abaixo:\n\n${linkDownload}`);
+                        await client.sendMessage(msg.from, `Para baixar seu material JWpub, clique no link abaixo:\n\n${linkDownload}`);
                         
-                    } 
-                    // SE FOR OUTRO TIPO (PDF, ETC): Envia o arquivo físico
-                    else {
+                    } else {
                         await chat.sendStateTyping();
                         await delay(3000); 
                         const media = MessageMedia.fromFilePath(`./${arquivo}`);
@@ -72,17 +63,21 @@ client.on('message', async (msg) => {
                     }
                 }
                 
+                // Mensagem final disparada apenas quando todos os arquivos terminam de ser enviados
                 await chat.sendStateTyping();
                 await delay(1000);
-                await client.sendMessage(msg.from, 'Prontinho! Bons estudos! 🚀');
+                await client.sendMessage(msg.from, 'Prontinho! Todos os arquivos foram enviados. Bons estudos! 🚀');
 
             } else if (body.length > 3) {
                 await chat.sendStateTyping();
                 await delay(2000);
-                await client.sendMessage(msg.from, 'Desculpe, não encontrei seu nome na lista. Verifique se digitou corretamente.');
+                await client.sendMessage(msg.from, 'Desculpe, não encontrei seu nome na lista de alunos matriculados. Verifique a grafia ou fale com o professor.');
             }
         } catch (error) {
             console.error('Erro no processamento:', error);
+            if (error.code === 'ENOENT') {
+                await client.sendMessage(msg.from, 'Localizei seu cadastro, mas algum arquivo físico ainda não está no servidor. Por favor, avise o suporte.');
+            }
         }
     }
 });

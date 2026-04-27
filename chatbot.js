@@ -14,7 +14,12 @@ const urlRegistroAcessos = 'https://script.google.com/macros/s/AKfycbwbn7x6r_2tZ
 
 const linkDownloadJwpub = 'https://drive.google.com/uc?export=download&id=12wYrAn2UnQF5IOWv8u81G1szMaaexr4u';
 
-const pastaUploads = path.join(__dirname, 'uploads');
+// Pasta compartilhada entre painel e bot
+const pastaUploads = path.join(process.env.HOME || __dirname, 'uploads');
+
+if (!fs.existsSync(pastaUploads)) {
+    fs.mkdirSync(pastaUploads, { recursive: true });
+}
 
 // ================= CLIENT =================
 const client = new Client({
@@ -50,8 +55,8 @@ const dividirCSV = (linha) => {
 
 const encontrarArquivo = (nomeArquivo) => {
     const caminhos = [
-        path.join(__dirname, nomeArquivo),
-        path.join(pastaUploads, nomeArquivo)
+        path.join(pastaUploads, nomeArquivo),
+        path.join(__dirname, nomeArquivo)
     ];
 
     return caminhos.find(caminho => fs.existsSync(caminho));
@@ -165,6 +170,7 @@ const enviarMaterialParaNumero = async (numero, arquivo) => {
     if (!caminhoArquivo) {
         await client.sendMessage(numero, `⚠️ Arquivo não encontrado: ${arquivoLimpo}`);
         console.error('Arquivo não encontrado:', arquivoLimpo);
+        console.error('Pasta compartilhada usada:', pastaUploads);
         return;
     }
 
@@ -185,6 +191,7 @@ client.on('qr', (qr) => {
 
 client.on('ready', () => {
     console.log('✅ Robô conectado!');
+    console.log(`📁 Pasta compartilhada de uploads: ${pastaUploads}`);
 });
 
 // ================= MENSAGENS =================
@@ -259,15 +266,7 @@ api.post('/enviar-material', async (req, res) => {
             telefone = '55' + telefone;
         }
 
-        const numeroFormatado = telefone.replace(/\D/g, '');
-
-let numero = numeroFormatado;
-
-if (!numero.startsWith('55')) {
-    numero = '55' + numero;
-}
-
-numero = numero + '@c.us';
+        const numero = `${telefone}@c.us`;
 
         if (!Array.isArray(materiais)) {
             materiais = materiais ? [materiais] : [];

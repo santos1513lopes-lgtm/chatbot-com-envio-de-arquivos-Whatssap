@@ -2,6 +2,8 @@ const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const axios = require('axios');
 const fs = require('fs');
+const path = require('path');
+const express = require('express');
 
 // ================= CONFIG =================
 const urlPlanilha = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT0jpFV50k9Ju50f_0jiWPLNAuKkDid4nwyrLl6AyYHTKCMKV95A04fL_-aNl5uHrjobXWeikTu1B0B/pub?output=csv';
@@ -11,6 +13,8 @@ const urlRespostas = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT0jpFV50k
 const urlRegistroAcessos = 'https://script.google.com/macros/s/AKfycbwbn7x6r_2tZva7uuNyJI-YOzEKoh60TEyKBf7jyUUMJXGeJkhmKNPq6Q5I0DnVcYRAlQ/exec';
 
 const linkDownloadJwpub = 'https://drive.google.com/uc?export=download&id=12wYrAn2UnQF5IOWv8u81G1szMaaexr4u';
+
+const pastaUploads = path.join(__dirname, 'uploads');
 
 // ================= CLIENT =================
 const client = new Client({
@@ -44,7 +48,15 @@ const dividirCSV = (linha) => {
     return linha.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
 };
 
-// REGISTRAR ACESSO
+const encontrarArquivo = (nomeArquivo) => {
+    const caminhos = [
+        path.join(__dirname, nomeArquivo),
+        path.join(pastaUploads, nomeArquivo)
+    ];
+
+    return caminhos.find(caminho => fs.existsSync(caminho));
+};
+
 const registrarAcesso = async (nomeAluno, telefone, materiais) => {
     const dataHora = new Date().toLocaleString('pt-BR', {
         timeZone: 'America/Sao_Paulo'
@@ -74,12 +86,10 @@ const registrarAcesso = async (nomeAluno, telefone, materiais) => {
     }
 };
 
-// BUSCAR RESPOSTA PERSONALIZADA NA ABA RESPOSTAS
 const buscarRespostaPersonalizada = async (mensagem) => {
     try {
         const response = await axios.get(urlRespostas);
         const linhas = response.data.split('\n').slice(1);
-
         const mensagemLimpa = removerAcentos(mensagem);
 
         for (let linha of linhas) {
@@ -107,11 +117,9 @@ const buscarRespostaPersonalizada = async (mensagem) => {
     }
 };
 
-// BUSCAR ALUNO NA PLANILHA PRINCIPAL
 const buscarAluno = async (nomeDigitado) => {
     const response = await axios.get(urlPlanilha);
     const linhas = response.data.split('\n').slice(1);
-
     const nomeDigitadoLimpo = removerAcentos(nomeDigitado);
 
     for (let linha of linhas) {
@@ -133,6 +141,40 @@ const buscarAluno = async (nomeDigitado) => {
     }
 
     return null;
+};
+
+const enviarMaterialParaNumero = async (numero, arquivo) => {
+    const arquivoLimpo = arquivo.trim();
+    const arquivoMinusculo = arquivoLimpo.toLowerCase();
+
+    if (arquivoMinusculo.startsWith('http://') || arquivoMinusculo.startsWith('https://')) {
+        await client.sendMessage(numero, `🔗 Segue o link para acesso:\n\n${arquivoLimpo}`);
+        return;
+    }
+
+    if (arquivoMinusculo.endsWith('.jwpub')) {
+        await client.sendMessage(
+            numero,
+            `📘 Para baixar o arquivo *${arquivoLimpo}*, clique no link abaixo:\n\n${linkDownloadJwpub}`
+        );
+        return;
+    }
+
+    const caminhoArquivo = encontrarArquivo(arquivoLimpo);
+
+    if (!caminhoArquivo) {
+        await client.sendMessage(numero, `⚠️ Arquivo não encontrado: ${arquivoLimpo}`);
+        console.error('Arquivo não encontrado:', arquivoLimpo);
+        return;
+    }
+
+    const media = MessageMedia.fromFilePath(caminhoArquivo);
+
+    if (arquivoMinusculo.endsWith('.mp3') || arquivoMinusculo.endsWith('.ogg')) {
+        await client.sendMessage(numero, media, { sendAudioAsVoice: true });
+    } else {
+        await client.sendMessage(numero, media, { sendMediaAsDocument: true });
+    }
 };
 
 // ================= EVENTOS =================
@@ -157,7 +199,6 @@ client.on('message', async (msg) => {
 
         if (body.length <= 1) return;
 
-        // 1. PRIMEIRO: BUSCA ALUNO NA PLANILHA PRINCIPAL
         const aluno = await buscarAluno(bodyOriginal);
 
         if (aluno) {
@@ -168,47 +209,7 @@ client.on('message', async (msg) => {
 
             for (const arquivo of aluno.materiais) {
                 await delay(1500);
-
-                const arquivoLimpo = arquivo.trim();
-                const arquivoMinusculo = arquivoLimpo.toLowerCase();
-
-                // LINK NORMAL
-                if (arquivoMinusculo.startsWith('http://') || arquivoMinusculo.startsWith('https://')) {
-                    await client.sendMessage(msg.from, `🔗 Segue o link para acesso:\n\n${arquivoLimpo}`);
-                }
-
-                // JWPUB - ENVIA LINK
-                else if (arquivoMinusculo.endsWith('.jwpub')) {
-                    await client.sendMessage(
-                        msg.from,
-                        `📘 Para baixar o arquivo *${arquivoLimpo}*, clique no link abaixo:\n\n${linkDownloadJwpub}`
-                    );
-                }
-
-                // ÁUDIO
-                else if (arquivoMinusculo.endsWith('.mp3') || arquivoMinusculo.endsWith('.ogg')) {
-                    try {
-                        await chat.sendStateRecording();
-                        await delay(3000);
-
-                        const media = MessageMedia.fromFilePath(`./${arquivoLimpo}`);
-                        await client.sendMessage(msg.from, media, { sendAudioAsVoice: true });
-                    } catch (erroAudio) {
-                        console.error(`Erro ao enviar áudio ${arquivoLimpo}:`, erroAudio.message);
-                        await client.sendMessage(msg.from, `⚠️ Não consegui enviar o áudio: ${arquivoLimpo}`);
-                    }
-                }
-
-                // PDF, IMAGEM, DOCUMENTOS ETC.
-                else {
-                    try {
-                        const media = MessageMedia.fromFilePath(`./${arquivoLimpo}`);
-                        await client.sendMessage(msg.from, media, { sendMediaAsDocument: true });
-                    } catch (erroArquivo) {
-                        console.error(`Erro ao enviar arquivo ${arquivoLimpo}:`, erroArquivo.message);
-                        await client.sendMessage(msg.from, `⚠️ Não consegui enviar o arquivo: ${arquivoLimpo}`);
-                    }
-                }
+                await enviarMaterialParaNumero(msg.from, arquivo);
             }
 
             if (aluno.msgExtra) {
@@ -217,22 +218,18 @@ client.on('message', async (msg) => {
             }
 
             await client.sendMessage(msg.from, '✅ Pronto! Bons estudos!');
-
             await registrarAcesso(aluno.nome, msg.from, aluno.materiais);
             return;
         }
 
-        // 2. SE NÃO FOR ALUNO, BUSCA RESPOSTA PERSONALIZADA
         const respostaPersonalizada = await buscarRespostaPersonalizada(bodyOriginal);
 
         if (respostaPersonalizada) {
             await chat.sendStateTyping();
             await delay(1500);
-
             return client.sendMessage(msg.from, respostaPersonalizada);
         }
 
-        // 3. MENSAGEM PADRÃO
         return client.sendMessage(
             msg.from,
             'Não encontrei seu cadastro ou uma resposta para sua mensagem.\n\nPor favor, envie seu *nome e sobrenome completo* ou digite *ajuda*.'
@@ -242,6 +239,68 @@ client.on('message', async (msg) => {
         console.error('Erro geral:', error);
         client.sendMessage(msg.from, '⚠️ Erro ao processar. Tente novamente.');
     }
+});
+
+// ================= API PARA O PAINEL =================
+const api = express();
+api.use(express.json());
+
+api.post('/enviar-material', async (req, res) => {
+    try {
+        let { telefone, nome, mensagem, materiais } = req.body;
+
+        if (!telefone) {
+            return res.status(400).json({ erro: 'Telefone obrigatório.' });
+        }
+
+        telefone = String(telefone).replace(/\D/g, '');
+
+        if (!telefone.startsWith('55')) {
+            telefone = '55' + telefone;
+        }
+
+        const numeroFormatado = telefone.replace(/\D/g, '');
+
+let numero = numeroFormatado;
+
+if (!numero.startsWith('55')) {
+    numero = '55' + numero;
+}
+
+numero = numero + '@c.us';
+
+        if (!Array.isArray(materiais)) {
+            materiais = materiais ? [materiais] : [];
+        }
+
+        await client.sendMessage(
+            numero,
+            mensagem || `Olá ${nome || ''}! Seguem seus materiais. 📚`
+        );
+
+        for (const arquivo of materiais) {
+            await delay(1500);
+            await enviarMaterialParaNumero(numero, arquivo);
+        }
+
+        await client.sendMessage(numero, '✅ Pronto! Bons estudos!');
+
+        await registrarAcesso(
+            nome || 'Envio pelo painel',
+            numero,
+            materiais
+        );
+
+        res.json({ sucesso: true });
+
+    } catch (error) {
+        console.error('Erro ao enviar pelo painel:', error.message);
+        res.status(500).json({ erro: error.message });
+    }
+});
+
+api.listen(4000, () => {
+    console.log('📡 API do bot rodando em http://localhost:4000');
 });
 
 // ================= START =================

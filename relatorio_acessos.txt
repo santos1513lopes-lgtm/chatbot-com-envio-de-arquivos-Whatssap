@@ -8,3 +8,10 @@
 [26/04/2026, 01:43:52] O aluno(a) Daniel Cerqueira acessou os materiais com sucesso.
 [26/04/2026, 02:23:57] O aluno(a) Josué Lopes acessou os materiais.
 [26/04/2026, 08:37:32] O aluno(a) Josué Lopes acessou os materiais.
+[26/04/2026, 19:49:15] lopes | 557191929005@c.us | 
+[26/04/2026, 19:52:01] teste | 557191929005@c.us | 1777243142409_pt14_T.pdf
+[26/04/2026, 19:55:09] teste | 557191929005@c.us | 1777243142409_pt14_T.pdf; 1777244043124_abril_2026_Pessoas_do_aplicativo_NWP.pdf
+[26/04/2026, 20:01:44] josué Lopes | 557191929005@c.us | 1777243142409_pt14_T.pdf; 1777244043124_abril_2026_Pessoas_do_aplicativo_NWP.pdf
+[26/04/2026, 20:27:10] Ana Lopes/55 75 8153-9427 | 557581539427@c.us | 1777243142409_pt14_T.pdf
+[26/04/2026, 20:28:13] Josué/557191929005 | 557191929005@c.us | 1777243142409_pt14_T.pdf; 1777244043124_abril_2026_Pessoas_do_aplicativo_NWP.pdf
+[26/04/2026, 20:28:29] Josue/557185279135 | 557185279135@c.us | 1777243142409_pt14_T.pdf; 1777244043124_abril_2026_Pessoas_do_aplicativo_NWP.pdf
